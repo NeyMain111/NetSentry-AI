@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="NetSentry AI — local network traffic monitor and anomaly detector">
+  <title>NetSentry AI</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <a class="brand" href="#overview" aria-label="NetSentry home">
+        <span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i></span>
+        <span><strong>NetSentry</strong><small>AI network defense</small></span>
+      </a>
+
+      <nav class="nav" aria-label="Primary navigation">
+        <a class="active" href="#overview" aria-current="page"><span>⌂</span>Overview</a>
+        <a href="#packets"><span>⇄</span>Packet explorer</a>
+        <a href="#alerts"><span>△</span>Threat alerts <b id="nav-alert-count">0</b></a>
+        <a href="#advisor"><span>✦</span>AI advisor</a>
+      </nav>
+
+      <div class="capture-panel">
+        <div class="eyebrow">Capture source</div>
+        <label class="field-label" for="capture-mode">Mode</label>
+        <select id="capture-mode">
+          <option value="demo">Synthetic demo</option>
+          <option value="live">Live interface</option>
+        </select>
+        <div id="interface-wrap" class="hidden">
+          <label class="field-label" for="interface">Network interface</label>
+          <select id="interface"><option value="">All interfaces</option></select>
+        </div>
+        <button id="start-btn" class="button primary"><span class="play">▶</span> Start capture</button>
+        <button id="stop-btn" class="button secondary" disabled><span>■</span> Stop capture</button>
+        <div class="capture-note"><span class="privacy-dot"></span>Packet payloads are not stored</div>
+      </div>
+
+      <div class="sidebar-footer">
+        <span id="api-dot" class="connection-dot"></span>
+        <span><strong id="api-label">Connecting</strong><small>Local engine</small></span>
+        <span class="version">v0.2</span>
+      </div>
+    </aside>
+
+    <main>
+      <header class="topbar">
+        <div>
+          <div class="eyebrow">Security operations dashboard</div>
+          <h1>Network overview</h1>
+        </div>
+        <div class="top-actions">
+          <div id="capture-badge" class="status-badge idle"><i></i><span>Capture idle</span></div>
+          <input id="pcap-input" type="file" accept=".pcap,.pcapng,.cap" hidden>
+          <button id="import-btn" class="icon-button" title="Import a PCAP capture">Import PCAP</button>
+          <a class="icon-button" href="/api/export.csv" download>Export CSV</a>
+          <button id="clear-btn" class="icon-button danger-text" title="Clear captured metadata">Clear</button>
+        </div>
+      </header>
+
+      <section id="overview" class="stats-grid" aria-label="Traffic summary">
+        <article class="stat-card accent-blue">
+          <div class="stat-icon">⇄</div>
+          <div><span>Total packets</span><strong id="total-packets">0</strong><small id="packet-rate">0 packets/sec</small></div>
+        </article>
+        <article class="stat-card accent-purple">
+          <div class="stat-icon">◫</div>
+          <div><span>Traffic volume</span><strong id="total-bytes">0 B</strong><small>Metadata analysed locally</small></div>
+        </article>
+        <article class="stat-card accent-red">
+          <div class="stat-icon">△</div>
+          <div><span>Security alerts</span><strong id="total-alerts">0</strong><small id="alert-summary">No active findings</small></div>
+        </article>
+        <article class="stat-card accent-green">
+          <div class="stat-icon">◎</div>
+          <div><span>Engine status</span><strong id="engine-status">Ready</strong><small id="engine-detail">Waiting for capture</small></div>
+        </article>
+      </section>
+
+      <section class="analytics-grid">
+        <article class="panel traffic-panel">
+          <div class="panel-heading">
+            <div><span class="eyebrow">Last 60 seconds</span><h2>Traffic activity</h2></div>
+            <div class="live-legend"><i></i>Packets / second</div>
+          </div>
+          <canvas id="traffic-chart" height="210" aria-label="Traffic rate chart"></canvas>
+        </article>
+        <article class="panel protocol-panel">
+          <div class="panel-heading">
+            <div><span class="eyebrow">Distribution</span><h2>Protocols</h2></div>
+          </div>
+          <div class="protocol-content">
+            <div id="protocol-donut" class="donut"><span><strong id="protocol-total">0</strong><small>packets</small></span></div>
+            <div id="protocol-legend" class="protocol-legend"><p class="empty-state">Start a capture to see protocols.</p></div>
+          </div>
+        </article>
+      </section>
+
+      <section id="packets" class="panel packet-panel">
+        <div class="panel-heading wrap-heading">
+          <div><span class="eyebrow">Live metadata</span><h2>Packet explorer</h2></div>
+          <div class="packet-tools">
+            <label class="search-box"><span>⌕</span><input id="packet-search" type="search" placeholder="Search IP, port or details"></label>
+            <label class="switch-label"><input id="suspicious-only" type="checkbox"><span class="switch"></span>Alerts only</label>
+          </div>
+        </div>
+        <div id="protocol-filters" class="filter-row">
+          <button class="filter-chip active" data-protocol="ALL">All</button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Time</th><th>Source</th><th>Destination</th><th>Protocol</th><th>Length</th><th>Details</th><th></th></tr></thead>
+            <tbody id="packet-rows">
+              <tr class="empty-row"><td colspan="7"><div class="empty-illustration">⇄</div><strong>No packets yet</strong><span>Start demo mode or a live capture to populate this table.</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="table-footer"><span id="packet-count">Showing 0 packets</span><span>Newest packets first</span></div>
+      </section>
+
+      <section class="lower-grid">
+        <article id="alerts" class="panel alerts-panel">
+          <div class="panel-heading">
+            <div><span class="eyebrow">Explainable detection</span><h2>Threat alerts</h2></div>
+            <span id="alert-badge" class="count-badge">0 findings</span>
+          </div>
+          <div id="alert-list" class="alert-list">
+            <div class="large-empty"><div class="shield-check">✓</div><strong>No threats detected</strong><p>Findings from the rule engine will appear here with supporting evidence.</p></div>
+          </div>
+        </article>
+
+        <article id="advisor" class="panel advisor-panel">
+          <div class="advisor-heading">
+            <div class="ai-orb">✦</div>
+            <div><span class="eyebrow">Local security copilot</span><h2>NetSentry Advisor</h2></div>
+            <span id="advisor-provider" class="model-badge">Checking local AI</span>
+          </div>
+          <p id="advisor-status-note" class="advisor-status-note">Checking whether the local language model is ready…</p>
+          <div id="chat-log" class="chat-log">
+            <div class="message assistant"><span>✦</span><p>I can analyse the current capture, explain alerts, remember follow-up questions, and suggest defensive next steps. Select an alert or ask me anything about the observed traffic.</p></div>
+          </div>
+          <div id="selected-alert" class="selected-alert hidden"></div>
+          <form id="advisor-form" class="advisor-form">
+            <textarea id="advisor-question" rows="2" maxlength="2000" placeholder="Ask a question — Enter to send, Shift+Enter for a new line"></textarea>
+            <button type="submit" aria-label="Send question">➤</button>
+          </form>
+          <p class="ai-disclaimer">Enter to send · Shift+Enter for a new line · Conversation history stays in this browser tab.</p>
+        </article>
+      </section>
+    </main>
+  </div>
+
+  <aside id="packet-drawer" class="drawer" aria-hidden="true">
+    <div class="drawer-backdrop" data-close-drawer></div>
+    <div class="drawer-card">
+      <button class="drawer-close" data-close-drawer aria-label="Close">×</button>
+      <span class="eyebrow">Packet metadata</span>
+      <h2 id="drawer-title">Packet details</h2>
+      <div id="drawer-content" class="detail-grid"></div>
+    </div>
+  </aside>
+
+  <div id="toast" class="toast" role="status"></div>
+  <script src="/static/app.js" defer></script>
+</body>
+</html>
